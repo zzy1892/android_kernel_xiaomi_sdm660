@@ -1,4 +1,5 @@
 /* Copyright (c) 2014-2018, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2018 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -355,8 +356,6 @@ struct qpnp_hap {
 	struct mutex			lock;
 	struct mutex			wf_lock;
 	spinlock_t			bus_lock;
-	spinlock_t			td_lock;
-	struct work_struct		td_work;
 	struct completion		completion;
 	enum qpnp_hap_mode		play_mode;
 	u32				misc_clk_trim_error_reg;
@@ -386,7 +385,7 @@ struct qpnp_hap {
 	u8				wave_shape;
 	u8				wave_samp[QPNP_HAP_WAV_SAMP_LEN];
 	u8				wave_samp_two[QPNP_HAP_WAV_SAMP_LEN];
- 	u8				wave_samp_three[QPNP_HAP_WAV_SAMP_LEN];
+	u8				wave_samp_three[QPNP_HAP_WAV_SAMP_LEN];
 	u8				shadow_wave_samp[QPNP_HAP_WAV_SAMP_LEN];
 	u8				brake_pat[QPNP_HAP_BRAKE_PAT_LEN];
 	u8				sc_count;
@@ -407,7 +406,6 @@ struct qpnp_hap {
 	bool				auto_mode;
 	bool				override_auto_mode_config;
 	bool				play_irq_en;
-	int				td_time_ms;
 };
 
 static struct qpnp_hap *ghap;
@@ -1055,25 +1053,26 @@ static int qpnp_hap_parse_buffer_dt(struct qpnp_hap *hap)
 	} else {
 		memcpy(hap->wave_samp, prop->value, QPNP_HAP_WAV_SAMP_LEN);
 	}
-	prop = of_find_property(pdev->dev.of_node,
- 			"qcom,wave-samples-two", &temp);
- 	if (!prop || temp != QPNP_HAP_WAV_SAMP_LEN) {
- 		pr_err("Invalid wave samples, use default");
- 		for (i = 0; i < QPNP_HAP_WAV_SAMP_LEN; i++)
- 			hap->wave_samp_two[i] = QPNP_HAP_WAV_SAMP_MAX;
- 	} else {
- 		memcpy(hap->wave_samp_two, prop->value, QPNP_HAP_WAV_SAMP_LEN);
- 	}
 
-  		prop = of_find_property(pdev->dev.of_node,
- 			"qcom,wave-samples-three", &temp);
- 	if (!prop || temp != QPNP_HAP_WAV_SAMP_LEN) {
- 		pr_err("Invalid wave samples, use default");
- 		for (i = 0; i < QPNP_HAP_WAV_SAMP_LEN; i++)
- 			hap->wave_samp_three[i] = QPNP_HAP_WAV_SAMP_MAX;
- 	} else {
- 		memcpy(hap->wave_samp_three, prop->value, QPNP_HAP_WAV_SAMP_LEN);
- 	}
+		prop = of_find_property(pdev->dev.of_node,
+			"qcom,wave-samples-two", &temp);
+	if (!prop || temp != QPNP_HAP_WAV_SAMP_LEN) {
+		pr_err("Invalid wave samples, use default");
+		for (i = 0; i < QPNP_HAP_WAV_SAMP_LEN; i++)
+			hap->wave_samp_two[i] = QPNP_HAP_WAV_SAMP_MAX;
+	} else {
+		memcpy(hap->wave_samp_two, prop->value, QPNP_HAP_WAV_SAMP_LEN);
+	}
+
+		prop = of_find_property(pdev->dev.of_node,
+			"qcom,wave-samples-three", &temp);
+	if (!prop || temp != QPNP_HAP_WAV_SAMP_LEN) {
+		pr_err("Invalid wave samples, use default");
+		for (i = 0; i < QPNP_HAP_WAV_SAMP_LEN; i++)
+			hap->wave_samp_three[i] = QPNP_HAP_WAV_SAMP_MAX;
+	} else {
+		memcpy(hap->wave_samp_three, prop->value, QPNP_HAP_WAV_SAMP_LEN);
+	}
 
 
 	return 0;
@@ -2283,20 +2282,14 @@ static int qpnp_hap_auto_mode_config(struct qpnp_hap *hap, int time_ms)
 	return 0;
 }
 
-static void qpnp_timed_enable_worker(struct work_struct *work)
+/* enable interface from timed output class */
+static void qpnp_hap_td_enable(struct timed_output_dev *dev, int time_ms)
 {
-	struct qpnp_hap *hap = container_of(work, struct qpnp_hap,
-					 td_work);
-
+	struct qpnp_hap *hap = container_of(dev, struct qpnp_hap,
+					 timed_dev);
+	bool state = !!time_ms;
 	ktime_t rem;
-	int rc, time_ms, vmax_mv;
-	bool state;
-
-	spin_lock(&hap->td_lock);
-	time_ms = hap->td_time_ms;
-	spin_unlock(&hap->td_lock);
-
-	state = !!time_ms;
+	int rc, vmax_mv;
 
 	if (time_ms < 0)
 		return;
@@ -2327,39 +2320,41 @@ static void qpnp_timed_enable_worker(struct work_struct *work)
 	} else {
 		if (time_ms < 10)
 			time_ms = 10;
+
 #ifdef CONFIG_KERNEL_CUSTOM_TULIP
- 	vmax_mv = hap->vmax_mv;
- 	qpnp_hap_vmax_config(hap, vmax_mv, false);
+	vmax_mv = hap->vmax_mv;
+	qpnp_hap_vmax_config(hap, vmax_mv, false);
 #else
-     if ((time_ms >= 30) || (time_ms != 11) || (time_ms != 15) || (time_ms != 20))
- 	{
- 	vmax_mv = 2204;
- 	qpnp_hap_vmax_config(hap, vmax_mv, false);
- 	hap->play_mode = QPNP_HAP_DIRECT;
-     }
- 	else
- 	{
- 	hap->play_mode = QPNP_HAP_BUFFER;
- 	qpnp_hap_parse_buffer_dt(hap);
- 	    if (time_ms == 20)
- 		{
- 		qpnp_hap_buffer_config(hap, hap->wave_samp_three, true);
- 		}else if (time_ms == 15)
- 		{
- 		qpnp_hap_buffer_config(hap, hap->wave_samp_two, true);
- 		}else if (time_ms == 11)
- 		{
- 		qpnp_hap_buffer_config(hap, hap->wave_samp, true);
- 		}
+    if ((time_ms >= 30) || (time_ms != 11) || (time_ms != 15) || (time_ms != 20))
+	{
+	vmax_mv = 2204;
+	qpnp_hap_vmax_config(hap, vmax_mv, false);
+	hap->play_mode = QPNP_HAP_DIRECT;
+    }
+	else
+	{
+	hap->play_mode = QPNP_HAP_BUFFER;
+	qpnp_hap_parse_buffer_dt(hap);
+	    if (time_ms == 20)
+		{
+		qpnp_hap_buffer_config(hap, hap->wave_samp_three, true);
+		}else if (time_ms == 15)
+		{
+		qpnp_hap_buffer_config(hap, hap->wave_samp_two, true);
+		}else if (time_ms == 11)
+		{
+		qpnp_hap_buffer_config(hap, hap->wave_samp, true);
+		}
 
-  	vmax_mv = 2204;
- 	qpnp_hap_vmax_config(hap, vmax_mv, false);
+	vmax_mv = 2204;
+	qpnp_hap_vmax_config(hap, vmax_mv, false);
 
-  	hap->play_mode = QPNP_HAP_BUFFER;
- 	hap->wave_shape = QPNP_HAP_WAV_SQUARE;
- 	}
- 	qpnp_hap_mod_enable(hap, false);
- 	qpnp_hap_play_mode_config(hap);
+	hap->play_mode = QPNP_HAP_BUFFER;
+	hap->wave_shape = QPNP_HAP_WAV_SQUARE;
+	}
+	qpnp_hap_mod_enable(hap, false);
+	qpnp_hap_play_mode_config(hap);
+
 #endif
 
 		if (hap->auto_mode) {
@@ -2383,19 +2378,6 @@ static void qpnp_timed_enable_worker(struct work_struct *work)
 
 	mutex_unlock(&hap->lock);
 	schedule_work(&hap->work);
-}
-
-/* enable interface from timed output class */
-static void qpnp_hap_td_enable(struct timed_output_dev *dev, int time_ms)
-{
-	struct qpnp_hap *hap = container_of(dev, struct qpnp_hap,
-					 timed_dev);
-
-	spin_lock(&hap->td_lock);
-	hap->td_time_ms = time_ms;
-	spin_unlock(&hap->td_lock);
-
-	schedule_work(&hap->td_work);
 }
 
 /* play pwm bytes */
@@ -2454,7 +2436,7 @@ int qpnp_hap_play_byte(u8 data, bool on)
 	pr_debug("data=0x%x duty_per=%d\n", data, duty_percent);
 
 	rc = qpnp_hap_set(hap, true);
-	pr_info("%s  zjl f   asd  7 \n", __func__);
+pr_info("%s  zjl f   asd  7 \n", __func__);
 	return rc;
 }
 EXPORT_SYMBOL(qpnp_hap_play_byte);
@@ -3136,11 +3118,9 @@ static int qpnp_haptic_probe(struct platform_device *pdev)
 
 	mutex_init(&hap->lock);
 	mutex_init(&hap->wf_lock);
-	spin_lock_init(&hap->td_lock);
 	INIT_WORK(&hap->work, qpnp_hap_worker);
 	INIT_DELAYED_WORK(&hap->sc_work, qpnp_handle_sc_irq);
 	init_completion(&hap->completion);
-	INIT_WORK(&hap->td_work, qpnp_timed_enable_worker);
 
 	hrtimer_init(&hap->hap_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	hap->hap_timer.function = qpnp_hap_timer;
