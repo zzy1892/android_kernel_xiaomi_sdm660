@@ -116,7 +116,7 @@ static struct step_chg_cfg step_chg_config = {
  * range data must be in increasing ranges and shouldn't overlap.
  * Gaps are okay
  */
-#if defined(CONFIG_KERNEL_CUSTOM_WAYNE)
+#if defined(CONFIG_KERNEL_CUSTOM_JASMINE) || defined(CONFIG_KERNEL_CUSTOM_WAYNE)
 static struct jeita_fcc_cfg jeita_fcc_config = {
 	.psy_prop	= POWER_SUPPLY_PROP_TEMP,
 	.prop_name	= "BATT_TEMP",

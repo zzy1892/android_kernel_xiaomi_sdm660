@@ -229,6 +229,12 @@ config KERNEL_CUSTOM_WAYNE
 	help
 	  Custom for WAYNE_pcb.
 
+config KERNEL_CUSTOM_JASMINE
+	default n
+	bool "Custom for hardware JASMINE_pcb"
+	help
+	  Custom for JASMINE_pcb.
+
 if ARM64_DMA_USE_IOMMU
 
 config ARM64_DMA_IOMMU_ALIGNMENT

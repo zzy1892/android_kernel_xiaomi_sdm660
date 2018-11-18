@@ -726,7 +726,7 @@ static int gf_probe(struct platform_device *pdev)
 	int status = -EINVAL;
 	unsigned long minor;
 	int i;
-#ifdef CONFIG_KERNEL_CUSTOM_WAYNE
+#if defined(CONFIG_KERNEL_CUSTOM_JASMINE) || defined(CONFIG_KERNEL_CUSTOM_WAYNE)
 	struct regulator *vreg;
 	int ret = 0;
 #endif
@@ -745,7 +745,7 @@ static int gf_probe(struct platform_device *pdev)
 	gf_dev->fb_black = 0;
 	gf_dev->wait_finger_down = false;
 	INIT_WORK(&gf_dev->work, notification_work);
-#ifdef CONFIG_KERNEL_CUSTOM_WAYNE
+#if defined(CONFIG_KERNEL_CUSTOM_JASMINE) || defined(CONFIG_KERNEL_CUSTOM_WAYNE)
 	vreg = regulator_get(&gf_dev->spi->dev, "vcc_ana");
 		if (!vreg) {
 			dev_err(&gf_dev->spi->dev, "Unable to get vdd_ana\n");
