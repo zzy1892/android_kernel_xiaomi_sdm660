@@ -183,6 +183,12 @@ endif
 
 dtb-$(CONFIG_ARCH_MSMHAMSTER) += msmhamster-rumi.dtb
 
+ifeq ($(CONFIG_KERNEL_CUSTOM_JASMINE),y)
+dtb-$(CONFIG_ARCH_SDM660) += sdm660-mtp_jasmine.dtb  \
+	sdm636-mtp_wayne.dtb \
+	sdm660-mtp_wayne_a1.dtb \
+	sdm660-mtp_wayne.dtb
+else
 dtb-$(CONFIG_ARCH_SDM660) += sdm660-mtp_whyred.dtb  \
 	sdm636-mtp_whyred.dtb \
 	sdm636-mtp_wayne.dtb \
@@ -267,7 +273,8 @@ dtb-$(CONFIG_ARCH_SDM660) += sdm660-mtp_whyred.dtb  \
 	#sda636-pm660a-mtp.dtb \
 	#sda636-pm660a-qrd-hdk.dtb \
 	#sda636-pm660a-rcm.dtb
-
+endif
+	
 dtb-$(CONFIG_ARCH_SDM630) += sdm630-rumi.dtb \
 	sdm630-pm660a-rumi.dtb \
 	sdm630-mtp.dtb \
