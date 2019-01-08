@@ -385,6 +385,8 @@ struct qpnp_hap {
 	u8				act_type;
 	u8				wave_shape;
 	u8				wave_samp[QPNP_HAP_WAV_SAMP_LEN];
+	u8				wave_samp_two[QPNP_HAP_WAV_SAMP_LEN];
+ 	u8				wave_samp_three[QPNP_HAP_WAV_SAMP_LEN];
 	u8				shadow_wave_samp[QPNP_HAP_WAV_SAMP_LEN];
 	u8				brake_pat[QPNP_HAP_BRAKE_PAT_LEN];
 	u8				sc_count;
@@ -1053,6 +1055,26 @@ static int qpnp_hap_parse_buffer_dt(struct qpnp_hap *hap)
 	} else {
 		memcpy(hap->wave_samp, prop->value, QPNP_HAP_WAV_SAMP_LEN);
 	}
+	prop = of_find_property(pdev->dev.of_node,
+ 			"qcom,wave-samples-two", &temp);
+ 	if (!prop || temp != QPNP_HAP_WAV_SAMP_LEN) {
+ 		pr_err("Invalid wave samples, use default");
+ 		for (i = 0; i < QPNP_HAP_WAV_SAMP_LEN; i++)
+ 			hap->wave_samp_two[i] = QPNP_HAP_WAV_SAMP_MAX;
+ 	} else {
+ 		memcpy(hap->wave_samp_two, prop->value, QPNP_HAP_WAV_SAMP_LEN);
+ 	}
+
+  		prop = of_find_property(pdev->dev.of_node,
+ 			"qcom,wave-samples-three", &temp);
+ 	if (!prop || temp != QPNP_HAP_WAV_SAMP_LEN) {
+ 		pr_err("Invalid wave samples, use default");
+ 		for (i = 0; i < QPNP_HAP_WAV_SAMP_LEN; i++)
+ 			hap->wave_samp_three[i] = QPNP_HAP_WAV_SAMP_MAX;
+ 	} else {
+ 		memcpy(hap->wave_samp_three, prop->value, QPNP_HAP_WAV_SAMP_LEN);
+ 	}
+
 
 	return 0;
 }
@@ -2265,9 +2287,9 @@ static void qpnp_timed_enable_worker(struct work_struct *work)
 {
 	struct qpnp_hap *hap = container_of(work, struct qpnp_hap,
 					 td_work);
-	
+
 	ktime_t rem;
-	int rc, time_ms;
+	int rc, time_ms, vmax_mv;
 	bool state;
 
 	spin_lock(&hap->td_lock);
@@ -2305,6 +2327,40 @@ static void qpnp_timed_enable_worker(struct work_struct *work)
 	} else {
 		if (time_ms < 10)
 			time_ms = 10;
+#ifdef CONFIG_KERNEL_CUSTOM_TULIP
+ 	vmax_mv = hap->vmax_mv;
+ 	qpnp_hap_vmax_config(hap, vmax_mv, false);
+#else
+     if ((time_ms >= 30) || (time_ms != 11) || (time_ms != 15) || (time_ms != 20))
+ 	{
+ 	vmax_mv = 2204;
+ 	qpnp_hap_vmax_config(hap, vmax_mv, false);
+ 	hap->play_mode = QPNP_HAP_DIRECT;
+     }
+ 	else
+ 	{
+ 	hap->play_mode = QPNP_HAP_BUFFER;
+ 	qpnp_hap_parse_buffer_dt(hap);
+ 	    if (time_ms == 20)
+ 		{
+ 		qpnp_hap_buffer_config(hap, hap->wave_samp_three, true);
+ 		}else if (time_ms == 15)
+ 		{
+ 		qpnp_hap_buffer_config(hap, hap->wave_samp_two, true);
+ 		}else if (time_ms == 11)
+ 		{
+ 		qpnp_hap_buffer_config(hap, hap->wave_samp, true);
+ 		}
+
+  	vmax_mv = 2204;
+ 	qpnp_hap_vmax_config(hap, vmax_mv, false);
+
+  	hap->play_mode = QPNP_HAP_BUFFER;
+ 	hap->wave_shape = QPNP_HAP_WAV_SQUARE;
+ 	}
+ 	qpnp_hap_mod_enable(hap, false);
+ 	qpnp_hap_play_mode_config(hap);
+#endif
 
 		if (hap->auto_mode) {
 			rc = qpnp_hap_auto_mode_config(hap, time_ms);
@@ -2318,6 +2374,7 @@ static void qpnp_timed_enable_worker(struct work_struct *work)
 		time_ms = (time_ms > hap->timeout_ms ?
 				 hap->timeout_ms : time_ms);
 		hap->play_time_ms = time_ms;
+		pr_info("zjl aaa  haptic  =%d\n", time_ms);
 		hrtimer_start(&hap->hap_timer,
 				ktime_set(time_ms / 1000,
 				(time_ms % 1000) * 1000000),
@@ -2397,7 +2454,7 @@ int qpnp_hap_play_byte(u8 data, bool on)
 	pr_debug("data=0x%x duty_per=%d\n", data, duty_percent);
 
 	rc = qpnp_hap_set(hap, true);
-
+	pr_info("%s  zjl f   asd  7 \n", __func__);
 	return rc;
 }
 EXPORT_SYMBOL(qpnp_hap_play_byte);

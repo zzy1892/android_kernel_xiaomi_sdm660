@@ -2344,6 +2344,7 @@ out:
 	return 0;
 }
 
+
 static int icnss_fw_crashed(struct icnss_priv *priv,
 			    struct icnss_event_pd_service_down_data *event_data)
 {
