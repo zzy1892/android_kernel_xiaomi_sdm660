@@ -26,15 +26,6 @@
 #include <linux/spmi.h>
 #include <linux/syscore_ops.h>
 
-/*Add-begin
-**JIRA-id:HMI_L6651_A01-202
-**Author:lijiang@longcheer.com
-**Date:2017-10-26
-**Comment:Logging kernel wakeup reson
-*/
-#include <linux/wakeup_reason.h>
-/*Add-end HMI_L6651_A01-202*/
-
 /* PMIC Arbiter configuration registers */
 #define PMIC_ARB_VERSION		0x0000
 #define PMIC_ARB_VERSION_V2_MIN		0x20010000
@@ -571,15 +562,6 @@ static void periph_interrupt(struct spmi_pmic_arb *pa, u16 apid, bool show)
 				name = "stray irq";
 			else if (desc->action && desc->action->name)
 				name = desc->action->name;
-
-			/*Add-begin
-			**JIRA-id:HMI_L6651_A01-202
-			**Author:lijiang@longcheer.com
-			**Date:2017-10-26
-			**Comment:Logging kernel wakeup reson
-			*/
-			log_wakeup_reason(irq);
-			/*Add-end HMI_L6651_A01-202*/
 
 			pr_warn("spmi_show_resume_irq: %d triggered [0x%01x, 0x%02x, 0x%01x] %s\n",
 				irq, sid, per, id, name);
