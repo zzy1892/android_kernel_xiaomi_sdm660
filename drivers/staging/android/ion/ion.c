@@ -1390,6 +1390,12 @@ static int __ion_share_dma_buf_fd(struct ion_client *client,
 }
 EXPORT_SYMBOL(ion_share_dma_buf_fd);
 
+static int ion_share_dma_buf_fd_nolock(struct ion_client *client,
+				       struct ion_handle *handle)
+{
+	return __ion_share_dma_buf_fd(client, handle, false);
+}
+
 bool ion_dma_buf_is_secure(struct dma_buf *dmabuf)
 {
 	struct ion_buffer *buffer;
@@ -1416,12 +1422,6 @@ int ion_share_dma_buf_fd(struct ion_client *client, struct ion_handle *handle)
 	return __ion_share_dma_buf_fd(client, handle, true);
 }
 EXPORT_SYMBOL(ion_dma_buf_is_secure);
-
-static int ion_share_dma_buf_fd_nolock(struct ion_client *client,
-				       struct ion_handle *handle)
-{
-	return __ion_share_dma_buf_fd(client, handle, false);
-}
 
 struct ion_handle *ion_import_dma_buf(struct ion_client *client, int fd)
 {
@@ -2113,3 +2113,4 @@ void __init ion_reserve(struct ion_platform_data *data)
 			data->heaps[i].size);
 	}
 }
+
