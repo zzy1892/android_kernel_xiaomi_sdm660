@@ -6481,4 +6481,3 @@ QDF_STATUS wma_get_roam_scan_stats(WMA_HANDLE handle,
 
 	return QDF_STATUS_SUCCESS;
 }
-

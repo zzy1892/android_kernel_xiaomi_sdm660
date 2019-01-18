@@ -8905,6 +8905,7 @@ static hdd_context_t *hdd_context_create(struct device *dev)
 	wlan_logging_set_active(hdd_ctx->config->wlanLoggingEnable);
 
 	hdd_ctx->is_ssr_in_progress = false;
+
 	/*
 	 * Update QDF trace levels based upon the code. The multicast
 	 * levels of the code need not be set when the logger thread
@@ -13383,7 +13384,7 @@ void hdd_drv_ops_inactivity_handler(unsigned long arg)
 module_init(hdd_module_init);
 module_exit(hdd_module_exit);
 #else
-device_initcall(hdd_module_init);
+late_initcall(hdd_module_init);
 #endif
 
 MODULE_LICENSE("Dual BSD/GPL");

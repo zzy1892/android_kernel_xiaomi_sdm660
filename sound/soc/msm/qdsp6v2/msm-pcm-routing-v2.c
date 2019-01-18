@@ -17106,6 +17106,13 @@ static int msm_routing_probe(struct snd_soc_platform *platform)
 
 	snd_soc_add_platform_controls(platform, native_mode_controls,
 				ARRAY_SIZE(native_mode_controls));
+    	/*tang shouxing add for voice wake up device  10/01 begin*/
+
+	#ifdef CONFIG_SND_SOC_DBMDX
+	snd_soc_add_platform_controls(platform, dbmdx_va_snd_controls,
+				ARRAY_SIZE(dbmdx_va_snd_controls));
+    	#endif
+	/*end*/
 
 	#ifdef CONFIG_SND_SOC_DBMDX
 	snd_soc_add_platform_controls(platform, dbmdx_va_snd_controls,

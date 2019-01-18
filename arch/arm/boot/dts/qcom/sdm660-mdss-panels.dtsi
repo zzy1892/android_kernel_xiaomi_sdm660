@@ -1,4 +1,5 @@
 /* Copyright (c) 2016-2018, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2018 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -36,6 +37,7 @@
 #include "dsi-panel-shenchao-nt36672a-1080p-video.dtsi"
 #include "dsi-panel-tianma-ft8719-1080p-video.dtsi"
 #include "dsi-panel-boe-ft8719-1080p-video.dtsi"
+
 &soc {
 	dsi_panel_pwr_supply: dsi_panel_pwr_supply {
 		#address-cells = <1>;
