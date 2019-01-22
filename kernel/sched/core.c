@@ -3249,6 +3249,8 @@ void scheduler_tick(void)
 	calc_global_load_tick(rq);
 	wallclock = sched_ktime_clock();
 	update_task_ravg(rq->curr, rq, TASK_UPDATE, wallclock, 0);
+
+	cpufreq_update_util(rq, 0);
 	early_notif = early_detection_notify(rq, wallclock);
 	cpufreq_update_util(rq, 0);
 	raw_spin_unlock(&rq->lock);
